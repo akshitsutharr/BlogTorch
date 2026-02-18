@@ -4,6 +4,15 @@ import { nanoid } from "nanoid";
 
 import { prisma } from "@/server/db";
 
+async function withDbFallback<T>(operation: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    console.error("Database query failed", error);
+    return fallback;
+  }
+}
+
 function slugify(input: string) {
   return input
     .toLowerCase()
@@ -47,26 +56,34 @@ export async function listPublishedPosts(limit = 12, query?: string) {
     }
   }
 
-  return await prisma.post.findMany({
-    where,
-    orderBy: { publishedAt: "desc" },
-    take: limit,
-    include: {
-      author: true,
-      tags: { include: { tag: true } },
-    },
-  });
+  return await withDbFallback(
+    () =>
+      prisma.post.findMany({
+        where,
+        orderBy: { publishedAt: "desc" },
+        take: limit,
+        include: {
+          author: true,
+          tags: { include: { tag: true } },
+        },
+      }),
+    [],
+  );
 }
 
 export async function getPublishedPostBySlug(slug: string) {
-  return await prisma.post.findFirst({
-    where: { slug, published: true },
-    include: {
-      author: true,
-      tags: { include: { tag: true } },
-      blocks: { orderBy: { order: "asc" } },
-    },
-  });
+  return await withDbFallback(
+    () =>
+      prisma.post.findFirst({
+        where: { slug, published: true },
+        include: {
+          author: true,
+          tags: { include: { tag: true } },
+          blocks: { orderBy: { order: "asc" } },
+        },
+      }),
+    null,
+  );
 }
 
 export async function createDraftPostForAuthor(authorId: string) {

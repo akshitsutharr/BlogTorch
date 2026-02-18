@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SearchInput } from "@/app/explore/search-input";
 import { listPublishedPosts } from "@/server/posts";
 
+export const dynamic = "force-dynamic";
+
 type PageProps = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };

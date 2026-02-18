@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { listPublishedPosts } from "@/server/posts";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const posts = await listPublishedPosts(9);
 

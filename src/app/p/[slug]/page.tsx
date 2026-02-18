@@ -10,6 +10,8 @@ import { ensureDbUser } from "@/server/me";
 import { prisma } from "@/server/db";
 import { ViewTracker } from "./view-tracker";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({
   params,
 }: {
