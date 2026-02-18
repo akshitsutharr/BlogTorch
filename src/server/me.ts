@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { headers } from "next/headers";
 
 import { prisma } from "@/server/db";
+import type { AuthUser } from "@/server/auth";
 import { requireAuthUser } from "@/server/auth";
 
 const TEST_BASIC_USER = process.env.TEST_BASIC_USER ?? "akshit";
@@ -83,7 +84,7 @@ async function upsertUserSafely(opts: {
   }
 }
 
-export async function ensureDbUser() {
+export async function ensureDbUser(authUser?: AuthUser) {
   const hdrs = await headers();
 
   // TestSprite / local automation path: allow basic auth to act as a synthetic user
@@ -102,7 +103,10 @@ export async function ensureDbUser() {
     }
   }
 
-  const clerk = await requireAuthUser();
+  const clerk = authUser ?? (await requireAuthUser());
+  if (!clerk) {
+    throw new Error("Unauthorized");
+  }
   const displayName = clerk.displayName;
 
   return await upsertUserSafely({

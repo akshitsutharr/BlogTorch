@@ -22,17 +22,46 @@ import {
 } from "@/components/ui/card";
 import { prisma } from "@/server/db";
 import { ensureDbUser } from "@/server/me";
+import { getAuthUser } from "@/server/auth";
+import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const me = await ensureDbUser();
+  const authUser = await getAuthUser();
+  if (!authUser) {
+    redirect("/sign-in");
+  }
 
-  const posts = await prisma.post.findMany({
-    where: { authorId: me.id },
-    orderBy: { updatedAt: "desc" },
-    include: {
-      tags: { include: { tag: true } },
-    },
-  });
+  const me = await ensureDbUser(authUser);
+
+  let posts: Array<{
+    id: string;
+    title: string;
+    updatedAt: Date;
+    published: boolean;
+    viewCount: number;
+    likeCount: number;
+    slug: string;
+  }> = [];
+
+  try {
+    posts = await prisma.post.findMany({
+      where: { authorId: me.id },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        updatedAt: true,
+        published: true,
+        viewCount: true,
+        likeCount: true,
+        slug: true,
+      },
+    });
+  } catch (error) {
+    console.error("Dashboard query failed", error);
+  }
 
   const totalPosts = posts.length;
   const totalViews = posts.reduce((acc, p) => acc + p.viewCount, 0);
@@ -114,6 +143,11 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              {posts.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No posts yet, or the database is unavailable.
+                </p>
+              ) : null}
               {posts.slice(0, 5).map((post) => (
                 <div
                   key={post.id}
@@ -145,6 +179,11 @@ export default async function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            {posts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No posts yet, or the database is unavailable.
+              </p>
+            ) : null}
             {posts.map((post) => (
               <div
                 key={post.id}

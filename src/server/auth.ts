@@ -39,7 +39,9 @@ export async function getAuthUser() {
   };
 }
 
-export async function requireAuthUser() {
+export type AuthUser = Awaited<ReturnType<typeof getAuthUser>>;
+
+export async function requireAuthUser(): Promise<NonNullable<AuthUser>> {
   const u = await getAuthUser();
   if (!u) {
     // Clerk will generally redirect on protected routes; this is for server actions.
