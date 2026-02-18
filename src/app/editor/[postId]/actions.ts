@@ -31,12 +31,32 @@ const SaveDraftSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 
+async function resolveTags(tagNames: string[]) {
+  if (!tagNames || tagNames.length === 0) return [];
+  const tagIds: string[] = [];
+
+  for (const tagName of tagNames) {
+    const slug = tagName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    // Upsert tag outside the transaction to avoid locking/long-running tx
+    const tag = await prisma.tag.upsert({
+      where: { slug },
+      create: { name: tagName, slug },
+      update: {},
+    });
+    tagIds.push(tag.id);
+  }
+  return tagIds;
+}
+
 export async function saveDraft(input: z.infer<typeof SaveDraftSchema>) {
   const parsed = SaveDraftSchema.parse(input);
   const me = await ensureDbUser();
 
   const post = await prisma.post.findUnique({ where: { id: parsed.postId } });
   if (!post || post.authorId !== me.id) throw new Error("Forbidden");
+
+  // Resolve tags outside the transaction
+  const tagIds = await resolveTags(parsed.tags || []);
 
   // Transaction to update post and tags
   await prisma.$transaction(async (tx) => {
@@ -50,6 +70,10 @@ export async function saveDraft(input: z.infer<typeof SaveDraftSchema>) {
     });
 
     // 2. Update Blocks
+    /* 
+       Note: We delete all blocks and recreate them. 
+       For large posts, this might be heavy, but blocks are usually < 500.
+    */
     await tx.block.deleteMany({ where: { postId: parsed.postId } });
     if (parsed.blocks.length > 0) {
       await tx.block.createMany({
@@ -62,26 +86,15 @@ export async function saveDraft(input: z.infer<typeof SaveDraftSchema>) {
       });
     }
 
-    // 3. Update Tags
-    // First, disconnect/delete existing PostTags
+    // 3. Update Tags (using pre-resolved IDs)
     await tx.postTag.deleteMany({ where: { postId: parsed.postId } });
-
-    // Then connect new tags
-    if (parsed.tags && parsed.tags.length > 0) {
-      for (const tagName of parsed.tags) {
-        const slug = tagName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-        const tag = await tx.tag.upsert({
-          where: { slug },
-          create: { name: tagName, slug },
-          update: {},
-        });
-        await tx.postTag.create({
-          data: {
-            postId: parsed.postId,
-            tagId: tag.id,
-          },
-        });
-      }
+    if (tagIds.length > 0) {
+      await tx.postTag.createMany({
+        data: tagIds.map((tagId) => ({
+          postId: parsed.postId,
+          tagId,
+        })),
+      });
     }
   });
 
@@ -99,6 +112,9 @@ export async function publishPost(input: z.infer<typeof PublishSchema>) {
   if (!post || post.authorId !== me.id) throw new Error("Forbidden");
 
   const newSlug = await reserveSlug(parsed.title);
+  
+  // Resolve tags outside the transaction
+  const tagIds = await resolveTags(parsed.tags || []);
 
   await prisma.$transaction(async (tx) => {
     await tx.post.update({
@@ -126,21 +142,13 @@ export async function publishPost(input: z.infer<typeof PublishSchema>) {
 
     // Update Tags for publish as well
     await tx.postTag.deleteMany({ where: { postId: parsed.postId } });
-    if (parsed.tags && parsed.tags.length > 0) {
-      for (const tagName of parsed.tags) {
-        const slug = tagName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-        const tag = await tx.tag.upsert({
-          where: { slug },
-          create: { name: tagName, slug },
-          update: {},
-        });
-        await tx.postTag.create({
-          data: {
-            postId: parsed.postId,
-            tagId: tag.id,
-          },
-        });
-      }
+    if (tagIds.length > 0) {
+      await tx.postTag.createMany({
+        data: tagIds.map((tagId) => ({
+          postId: parsed.postId,
+          tagId,
+        })),
+      });
     }
   });
 
