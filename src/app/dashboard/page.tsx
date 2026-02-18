@@ -35,20 +35,58 @@ export default async function DashboardPage() {
 
   const me = await ensureDbUser(authUser);
 
-  let posts: Array<{
-    id: string;
-    title: string;
-    updatedAt: Date;
-    published: boolean;
-    viewCount: number;
-    likeCount: number;
-    slug: string;
-  }> = [];
-
-  try {
-    posts = await prisma.post.findMany({
+  // Optimize data fetching: use aggregations and limits to avoid fetching all posts
+  const [
+    totalPosts,
+    viewsAggregation,
+    likesAggregation,
+    recentPosts,
+    chartPosts,
+    allPosts,
+  ] = await Promise.all([
+    // 1. Total post count
+    prisma.post.count({
+      where: { authorId: me.id },
+    }),
+    // 2. Total views
+    prisma.post.aggregate({
+      _sum: { viewCount: true },
+      where: { authorId: me.id },
+    }),
+    // 3. Total likes
+    prisma.post.aggregate({
+      _sum: { likeCount: true },
+      where: { authorId: me.id },
+    }),
+    // 4. Recent activity (limit 5)
+    prisma.post.findMany({
       where: { authorId: me.id },
       orderBy: { updatedAt: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        title: true,
+        updatedAt: true,
+        published: true,
+        viewCount: true,
+        slug: true,
+      },
+    }),
+    // 5. Chart data (limit 30 most recent published)
+    prisma.post.findMany({
+      where: { authorId: me.id, published: true },
+      orderBy: { publishedAt: "desc" },
+      take: 30,
+      select: {
+        title: true,
+        viewCount: true,
+      },
+    }),
+    // 6. All posts list (limit 50 for now to prevent timeouts)
+    prisma.post.findMany({
+      where: { authorId: me.id },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
       select: {
         id: true,
         title: true,
@@ -58,22 +96,20 @@ export default async function DashboardPage() {
         likeCount: true,
         slug: true,
       },
-    });
-  } catch (error) {
-    console.error("Dashboard query failed", error);
-  }
+    }),
+  ]);
 
-  const totalPosts = posts.length;
-  const totalViews = posts.reduce((acc, p) => acc + p.viewCount, 0);
-  const totalLikes = posts.reduce((acc, p) => acc + p.likeCount, 0);
+  const totalViews = viewsAggregation._sum.viewCount ?? 0;
+  const totalLikes = likesAggregation._sum.likeCount ?? 0;
 
-  const chartData = posts
-    .filter((p) => p.published)
-    .map((p) => ({
-      title: p.title,
-      views: p.viewCount,
-    }))
-    .slice(0, 10);
+  // Reverse chart posts to show oldest -> newest
+  const chartData = chartPosts.reverse().map((p) => ({
+    title: p.title,
+    views: p.viewCount,
+  }));
+  
+  // Use 'allPosts' for the posts list
+  const posts = allPosts;
 
   return (
     <main className="mx-auto w-full max-w-6xl space-y-8 px-4 py-8">
