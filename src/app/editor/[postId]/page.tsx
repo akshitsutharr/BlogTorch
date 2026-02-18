@@ -1,8 +1,11 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { EditorClient } from "@/app/editor/[postId]/editor-client";
 import { ensureDbUser } from "@/server/me";
 import { prisma } from "@/server/db";
+import { getAuthUser } from "@/server/auth";
+
+export const dynamic = "force-dynamic";
 
 export default async function Page({
   params,
@@ -15,14 +18,26 @@ export default async function Page({
     notFound();
   }
 
-  const me = await ensureDbUser();
-  const post = await prisma.post.findUnique({
-    where: { id: postId },
-    include: {
-      blocks: { orderBy: { order: "asc" } },
-      tags: { include: { tag: true } },
-    },
-  });
+  const authUser = await getAuthUser();
+  if (!authUser) {
+    redirect("/sign-in");
+  }
+
+  const me = await ensureDbUser(authUser);
+  
+  let post;
+  try {
+    post = await prisma.post.findUnique({
+      where: { id: postId },
+      include: {
+        blocks: { orderBy: { order: "asc" } },
+        tags: { include: { tag: true } },
+      },
+    });
+  } catch (error) {
+    console.error("Failed to fetch post:", error);
+    redirect("/dashboard");
+  }
 
   if (!post || post.authorId !== me.id) notFound();
 

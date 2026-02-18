@@ -36,8 +36,16 @@ export const prisma =
       process.env.NODE_ENV === "development"
         ? ["query", "warn", "error"]
         : ["error"],
+    errorFormat: "minimal",
   });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+
+// Graceful shutdown
+if (process.env.NODE_ENV === "production") {
+  process.on("beforeExit", async () => {
+    await prisma.$disconnect();
+  });
+}
 
 

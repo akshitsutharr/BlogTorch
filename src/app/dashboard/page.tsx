@@ -35,15 +35,23 @@ export default async function DashboardPage() {
 
   const me = await ensureDbUser(authUser);
 
-  // Optimize data fetching: use aggregations and limits to avoid fetching all posts
-  const [
-    totalPosts,
-    viewsAggregation,
-    likesAggregation,
-    recentPosts,
-    chartPosts,
-    allPosts,
-  ] = await Promise.all([
+  let totalPosts = 0;
+  let totalViews = 0;
+  let totalLikes = 0;
+  let recentPosts: any[] = [];
+  let chartData: { title: string; views: number }[] = [];
+  let posts: any[] = [];
+
+  try {
+    // Optimize data fetching: use aggregations and limits to avoid fetching all posts
+    const [
+      totalPostsCount,
+      viewsAggregation,
+      likesAggregation,
+      recentPostsData,
+      chartPosts,
+      allPosts,
+    ] = await Promise.all([
     // 1. Total post count
     prisma.post.count({
       where: { authorId: me.id },
@@ -99,17 +107,23 @@ export default async function DashboardPage() {
     }),
   ]);
 
-  const totalViews = viewsAggregation._sum.viewCount ?? 0;
-  const totalLikes = likesAggregation._sum.likeCount ?? 0;
+  totalPosts = totalPostsCount;
+  totalViews = viewsAggregation._sum.viewCount ?? 0;
+  totalLikes = likesAggregation._sum.likeCount ?? 0;
+  recentPosts = recentPostsData;
 
   // Reverse chart posts to show oldest -> newest
-  const chartData = chartPosts.reverse().map((p) => ({
+  chartData = chartPosts.reverse().map((p) => ({
     title: p.title,
     views: p.viewCount,
   }));
   
   // Use 'allPosts' for the posts list
-  const posts = allPosts;
+  posts = allPosts;
+  } catch (error) {
+    console.error("Dashboard query failed:", error);
+    // Continue with empty data - UI will show "No posts yet"
+  }
 
   return (
     <main className="mx-auto w-full max-w-6xl space-y-8 px-4 py-8">
