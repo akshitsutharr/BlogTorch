@@ -1,0 +1,200 @@
+// Blog Torch Prisma schema (MongoDB)
+// - Core entities: User, Post, Block
+// - Social: Follow, Like, Comment, Bookmark
+// - Discovery: Tag, PostTag
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum PostSource {
+  EDITOR
+  IPYNB_IMPORT
+}
+
+enum BlockType {
+  MARKDOWN
+  CODE
+  OUTPUT
+  IMAGE
+  EMBED
+  DIVIDER
+  CALLOUT
+}
+
+model User {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  clerkId     String   @unique
+  role        UserRole @default(USER)
+
+  username    String?  @unique
+  displayName String?
+  bio         String?
+  imageUrl    String?
+
+  websiteUrl  String?
+  githubUrl   String?
+  twitterUrl  String?
+  location    String?
+
+  posts       Post[]
+  comments    Comment[]
+  likes       Like[]
+  bookmarks   Bookmark[]
+
+  followers   Follow[] @relation("followers")
+  following   Follow[] @relation("following")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Post {
+  id             String     @id @default(auto()) @map("_id") @db.ObjectId
+  slug           String     @unique
+  title          String
+  excerpt        String?
+  coverImageUrl  String?
+
+  published      Boolean    @default(false)
+  featured       Boolean    @default(false)
+  source         PostSource @default(EDITOR)
+
+  primaryLangs   String[]   @default([])
+
+  authorId       String     @db.ObjectId
+  author         User       @relation(fields: [authorId], references: [id])
+
+  blocks         Block[]
+  tags           PostTag[]
+
+  likes          Like[]
+  comments       Comment[]
+  bookmarks      Bookmark[]
+
+  likeCount      Int        @default(0)
+  viewCount      Int        @default(0)
+  commentCount   Int        @default(0)
+
+  publishedAt    DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([authorId, createdAt])
+  @@index([published, publishedAt])
+  @@index([likeCount])
+}
+
+model Block {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  postId    String    @db.ObjectId
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  type      BlockType
+  order     Int
+  data      Json
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([postId, order])
+}
+
+model Tag {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  name      String    @unique
+  slug      String    @unique
+
+  posts     PostTag[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model PostTag {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  postId  String @db.ObjectId
+  tagId   String @db.ObjectId
+
+  post    Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, tagId])
+  @@index([tagId])
+  @@index([postId])
+}
+
+model Like {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  postId    String   @db.ObjectId
+  userId    String   @db.ObjectId
+
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@index([userId])
+}
+
+model Bookmark {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  postId    String   @db.ObjectId
+  userId    String   @db.ObjectId
+
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@index([userId])
+}
+
+model Comment {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  postId    String    @db.ObjectId
+  authorId  String    @db.ObjectId
+  parentId  String?   @db.ObjectId
+
+  body      String
+
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // Prisma 7 requires one side of a self-relation to use NoAction referential actions
+  // to avoid cyclic cascade/update paths.
+  parent    Comment?  @relation("comment_thread", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies   Comment[] @relation("comment_thread")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([postId, createdAt])
+  @@index([authorId])
+}
+
+model Follow {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  followerId   String   @db.ObjectId
+  followingId  String   @db.ObjectId
+
+  follower     User     @relation("following", fields: [followerId], references: [id], onDelete: Cascade)
+  following    User     @relation("followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
+}

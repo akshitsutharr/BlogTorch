@@ -1,65 +1,108 @@
-import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight, Sparkles } from "lucide-react";
 
-export default function Home() {
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { listPublishedPosts } from "@/server/posts";
+
+export default async function Home() {
+  const posts = await listPublishedPosts(9);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <main className="mx-auto w-full max-w-6xl px-4 py-10">
+      <section
+        id="hero"
+        className="relative overflow-hidden rounded-[2.25rem] border border-border/60 bg-gradient-to-br from-orange-500/10 via-background to-pink-500/10 p-10 shadow-sm"
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(249,115,22,0.12),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(236,72,153,0.10),transparent_40%)]" />
+        <div className="relative flex flex-col gap-6">
+          <div className="flex items-center gap-2">
+            <Badge>
+              <Sparkles className="mr-1 inline size-3.5" />
+              Premium developer blogging
+            </Badge>
+          </div>
+          <h1 className="max-w-3xl text-balance text-4xl font-semibold tracking-tight md:text-5xl">
+            Where <span className="text-primary">Code</span> Meets{" "}
+            <span className="text-primary">Storytelling</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="max-w-2xl text-pretty text-lg leading-8 text-muted-foreground">
+            Blog Torch combines a developer portfolio, technical blog, and
+            notebook-style presentation into one polished platform—perfect for
+            ML models, experiments, and project narratives.
           </p>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button asChild size="lg">
+              <Link href="/editor/new">
+                Start writing <ArrowRight />
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/explore">Explore posts</Link>
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      <section className="mt-10">
+        <div className="mb-4 flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">Latest posts</h2>
+            <p className="text-sm text-muted-foreground">
+              Curated developer stories with code, visuals, and outputs.
+            </p>
+          </div>
+          <Button asChild variant="ghost">
+            <Link href="/explore">
+              View all <ArrowRight />
+            </Link>
+          </Button>
         </div>
+
+        {posts.length === 0 ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>No posts yet</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              Publish your first post from <span className="font-medium">New post</span>{" "}
+              to see it here.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {posts.map((p) => (
+              <Card key={p.id} className="group transition-shadow hover:shadow-md">
+                <CardHeader>
+                  <CardTitle className="line-clamp-2">{p.title}</CardTitle>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {p.tags.slice(0, 3).map((t) => (
+                      <Badge key={t.id} variant="secondary">
+                        {t.tag.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="line-clamp-3 text-sm text-muted-foreground">
+                    {p.excerpt ?? "A notebook-style technical story."}
+                  </p>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{p.author.displayName ?? p.author.username ?? "Author"}</span>
+                    <span>
+                      {p.likeCount} likes · {p.viewCount} views
+                    </span>
+                  </div>
+                  <Button asChild className="w-full" variant="outline">
+                    <Link href={`/p/${p.slug}`}>Read</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
       </main>
-    </div>
   );
 }
