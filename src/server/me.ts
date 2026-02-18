@@ -34,11 +34,24 @@ async function upsertUserSafely(opts: {
   imageUrl?: string | null;
   isAdmin?: boolean;
 }) {
-  const baseUpdate: any = {
-    displayName: opts.displayName,
-    imageUrl: opts.imageUrl ?? null,
-    role: opts.isAdmin ? "ADMIN" : "USER",
-  };
+  // First check if user already exists
+  const existingUser = await prisma.user.findUnique({
+    where: { clerkId: opts.clerkId },
+  });
+
+  if (existingUser) {
+    // User exists - only update non-username fields to avoid conflicts
+    return await prisma.user.update({
+      where: { clerkId: opts.clerkId },
+      data: {
+        displayName: opts.displayName,
+        imageUrl: opts.imageUrl ?? null,
+        role: opts.isAdmin ? "ADMIN" : "USER",
+      },
+    });
+  }
+
+  // User doesn't exist - create with safe username
   const baseCreate: any = {
     clerkId: opts.clerkId,
     displayName: opts.displayName,
@@ -47,15 +60,12 @@ async function upsertUserSafely(opts: {
   };
 
   if (opts.username) {
-    baseUpdate.username = opts.username;
     baseCreate.username = opts.username;
   }
 
   try {
-    return await prisma.user.upsert({
-      where: { clerkId: opts.clerkId },
-      update: baseUpdate,
-      create: baseCreate,
+    return await prisma.user.create({
+      data: baseCreate,
     });
   } catch (error) {
     if (
@@ -63,18 +73,13 @@ async function upsertUserSafely(opts: {
       error.code === "P2002" &&
       opts.username
     ) {
-      // Username is taken; generate a unique variant and try once more.
+      // Username is taken; generate a unique variant and try again
       const safeUsername = `${opts.username}-${Math.random()
         .toString(36)
         .slice(2, 8)}`;
 
-      return await prisma.user.upsert({
-        where: { clerkId: opts.clerkId },
-        update: {
-          ...baseUpdate,
-          username: safeUsername,
-        },
-        create: {
+      return await prisma.user.create({
+        data: {
           ...baseCreate,
           username: safeUsername,
         },
