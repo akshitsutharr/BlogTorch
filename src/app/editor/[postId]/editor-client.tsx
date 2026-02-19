@@ -139,6 +139,7 @@ export function EditorClient({
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const hasMountedRef = useRef(false);
 
   const [blocks, setBlocks] = useState<EditorBlock[]>(
     post.blocks.map((b) => ({
@@ -150,22 +151,56 @@ export function EditorClient({
 
   const ids = useMemo(() => blocks.map((b) => b.id), [blocks]);
 
-  // Mark dirty when content changes
+  const onSave = useCallback(
+    async (silent = false) => {
+      setSaving(true);
+      try {
+        await saveDraft({
+          postId: post.id,
+          title: title.trim() || "Untitled",
+          excerpt: excerpt.trim() ? excerpt.trim() : null,
+          blocks: blocks.map((b) => ({ type: b.type, data: b.data })),
+          tags,
+        });
+        if (!silent) toast.success("Saved");
+        setIsDirty(false);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Save failed");
+      } finally {
+        setSaving(false);
+      }
+    },
+    [post.id, title, excerpt, blocks, tags],
+  );
+
+  // Mark dirty when content changes after initial mount
   useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
     setIsDirty(true);
   }, [title, excerpt, blocks, tags]);
 
-  // Initial load shouldn't be dirty (hacky but works for now to avoid immediate auto-save on load if using strict mode)
-  // Or better, just rely on user interaction.
-  // For simplicity: auto-save every 60s if dirty.
+  // Debounced autosave while editing.
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (isDirty && !saving) {
-        onSave(true); // silent save
-      }
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [isDirty, saving, title, excerpt, blocks, tags]);
+    if (!isDirty || saving) return;
+    const timeout = setTimeout(() => {
+      void onSave(true);
+    }, 2500);
+    return () => clearTimeout(timeout);
+  }, [isDirty, saving, onSave]);
+
+  useEffect(() => {
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!isDirty) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty]);
 
   function addBlock(type: BlockType) {
     setBlocks((prev) => [
@@ -195,29 +230,6 @@ export function EditorClient({
     setBlocks((prev) => prev.filter((b) => b.id !== id));
   }
 
-  const onSave = useCallback(
-    async (silent = false) => {
-      setSaving(true);
-      try {
-        await saveDraft({
-          postId: post.id,
-          title: title.trim() || "Untitled",
-          excerpt: excerpt.trim() ? excerpt.trim() : null,
-          blocks: blocks.map((b) => ({ type: b.type, data: b.data })),
-          tags,
-        });
-        if (!silent) toast.success("Saved");
-        setIsDirty(false);
-        router.refresh();
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Save failed");
-      } finally {
-        setSaving(false);
-      }
-    },
-    [post.id, title, excerpt, blocks, tags, router],
-  );
-
   async function onPublish() {
     setSaving(true);
     try {
@@ -229,6 +241,7 @@ export function EditorClient({
         tags,
       });
       toast.success("Published");
+      setIsDirty(false);
       router.push(`/p/${res.slug}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Publish failed");

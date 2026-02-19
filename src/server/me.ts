@@ -52,7 +52,7 @@ async function upsertUserSafely(opts: {
   }
 
   // User doesn't exist - create with safe username
-  const baseCreate: any = {
+  const baseCreate: Prisma.UserCreateInput = {
     clerkId: opts.clerkId,
     displayName: opts.displayName,
     imageUrl: opts.imageUrl ?? null,

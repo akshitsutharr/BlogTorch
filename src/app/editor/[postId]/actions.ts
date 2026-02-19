@@ -154,6 +154,8 @@ export async function publishPost(input: z.infer<typeof PublishSchema>) {
 
   revalidatePath(`/p/${newSlug}`);
   revalidatePath(`/explore`);
+  revalidatePath(`/dashboard`);
+  revalidatePath(`/editor/${parsed.postId}`);
   revalidatePath(`/`);
   return { ok: true as const, slug: newSlug };
 }

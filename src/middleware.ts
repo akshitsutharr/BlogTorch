@@ -15,7 +15,7 @@ function isTestBasicAuthHeader(headerValue: string | null): boolean {
   const [scheme, credentials] = headerValue.split(" ");
   if (!scheme || scheme.toLowerCase() !== "basic" || !credentials) return false;
   try {
-    const decoded = Buffer.from(credentials, "base64").toString("utf8");
+    const decoded = atob(credentials);
     const [username, password] = decoded.split(":");
     return username === TEST_BASIC_USER && password === TEST_BASIC_PASS;
   } catch {

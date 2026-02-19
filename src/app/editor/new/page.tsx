@@ -12,14 +12,16 @@ export default async function Page() {
     redirect("/sign-in");
   }
 
+  let post;
   try {
     const me = await ensureDbUser(authUser);
-    const post = await createDraftPostForAuthor(me.id);
-    redirect(`/editor/${post.id}`);
+    post = await createDraftPostForAuthor(me.id);
   } catch (error) {
     console.error("Failed to create new post:", error);
     redirect("/dashboard");
   }
+
+  redirect(`/editor/${post.id}`);
 }
 
 
