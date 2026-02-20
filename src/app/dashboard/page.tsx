@@ -33,8 +33,8 @@ export default async function DashboardPage() {
   let recentPosts: any[] = [];
   let chartData: { title: string; views: number }[] = [];
   let posts: any[] = [];
-  let commentsOnMine: Awaited<ReturnType<typeof prisma.comment.findMany>> = [];
-  let myComments: Awaited<ReturnType<typeof prisma.comment.findMany>> = [];
+  let commentsOnMine: any[] = [];
+  let myComments: any[] = [];
 
   try {
     // Optimize data fetching: use aggregations and limits to avoid fetching all posts
