@@ -51,6 +51,7 @@ export default async function Page({
           id: post.id,
           title: post.title,
           excerpt: post.excerpt,
+          coverImageUrl: post.coverImageUrl,
           published: post.published,
           tags: post.tags.map((t) => t.tag.name),
           blocks: post.blocks.map((b) => ({

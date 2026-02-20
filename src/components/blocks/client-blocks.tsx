@@ -1,3 +1,4 @@
+"use client";
 
 import { MarkdownBlock } from "@/components/blocks/markdown-block";
 import { cn } from "@/lib/utils";
@@ -35,16 +36,23 @@ export function OutputBlock({ data }: { data: Prisma.JsonValue }) {
 
 export function ImageBlock({ data }: { data: Prisma.JsonValue }) {
   const d = isRecord(data) ? data : {};
-  const url = typeof d.url === "string" ? d.url : null;
-  if (!url) return null;
+  let src: string | null = typeof d.url === "string" ? d.url.trim() : null;
+  if (!src && typeof d.base64 === "string" && typeof d.mime === "string") {
+    src = `data:${d.mime};base64,${d.base64}`;
+  }
+  if (!src) return null;
+  const alt = typeof d.alt === "string" ? d.alt : "Image";
   return (
     <figure className="overflow-hidden rounded-3xl border border-border/60 bg-card/60 p-3 shadow-sm">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={url}
-        alt={typeof d.alt === "string" ? d.alt : "Image"}
+        src={src}
+        alt={alt}
         className="h-auto w-full rounded-2xl"
         loading="lazy"
+        onError={(e) => {
+          (e.target as HTMLImageElement).style.display = "none";
+        }}
       />
       {typeof d.caption === "string" && d.caption.trim() ? (
         <figcaption className="px-2 pt-3 text-center text-xs text-muted-foreground">

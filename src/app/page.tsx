@@ -4,15 +4,33 @@ import { ArrowRight, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { listPublishedPosts } from "@/server/posts";
+import { BlogCard } from "@/components/blog-card";
+import { listPublishedPosts, getBookmarkedPostIds } from "@/server/posts";
+import { getBannerForPost } from "@/server/banners";
+import { ensureDbUser } from "@/server/me";
+import { getAuthUser } from "@/server/auth";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function Home() {
-  const posts = await listPublishedPosts(9);
+  const [posts, authUser] = await Promise.all([
+    listPublishedPosts(9),
+    getAuthUser().catch(() => null),
+  ]);
+
+  let me: { id: string } | null = null;
+  let bookmarkedIds = new Set<string>();
+  if (authUser && posts.length > 0) {
+    try {
+      me = await ensureDbUser(authUser);
+      bookmarkedIds = await getBookmarkedPostIds(me.id, posts.map((p) => p.id));
+    } catch {
+      /* ignore */
+    }
+  }
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-10">
+    <main className="mx-auto w-full max-w-4xl px-4 py-10">
       <section
         id="hero"
         className="relative overflow-hidden rounded-[2.25rem] border border-border/60 bg-gradient-to-br from-orange-500/10 via-background to-pink-500/10 p-10 shadow-sm"
@@ -47,10 +65,10 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="mt-10">
-        <div className="mb-4 flex items-end justify-between gap-4">
+      <section className="mt-12">
+        <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">Latest posts</h2>
+            <h2 className="text-xl font-semibold tracking-tight">For you</h2>
             <p className="text-sm text-muted-foreground">
               Curated developer stories with code, visuals, and outputs.
             </p>
@@ -73,38 +91,29 @@ export default async function Home() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-4">
             {posts.map((p) => (
-              <Card key={p.id} className="group transition-shadow hover:shadow-md">
-                <CardHeader>
-                  <CardTitle className="line-clamp-2">{p.title}</CardTitle>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {p.tags.slice(0, 3).map((t) => (
-                      <Badge key={t.id} variant="secondary">
-                        {t.tag.name}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="line-clamp-3 text-sm text-muted-foreground">
-                    {p.excerpt ?? "A notebook-style technical story."}
-                  </p>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{p.author.displayName ?? p.author.username ?? "Author"}</span>
-                    <span>
-                      {p.likeCount} likes · {p.viewCount} views
-                    </span>
-                  </div>
-                  <Button asChild className="w-full" variant="outline">
-                    <Link href={`/p/${p.slug}`}>Read</Link>
-                  </Button>
-                </CardContent>
-              </Card>
+              <BlogCard
+                key={p.id}
+                postId={p.id}
+                slug={p.slug}
+                title={p.title}
+                excerpt={p.excerpt}
+                coverImageUrl={p.coverImageUrl ?? getBannerForPost(p.id)}
+                author={p.author}
+                authorId={p.authorId}
+                tags={p.tags}
+                publishedAt={p.publishedAt}
+                viewCount={p.viewCount}
+                commentCount={p.commentCount}
+                likeCount={p.likeCount}
+                currentUserId={me?.id}
+                initialBookmarked={bookmarkedIds.has(p.id)}
+              />
             ))}
           </div>
         )}
       </section>
-      </main>
+    </main>
   );
 }

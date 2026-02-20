@@ -27,6 +27,7 @@ const SaveDraftSchema = z.object({
   postId: z.string().min(1),
   title: z.string().min(1).max(200),
   excerpt: z.string().max(500).nullable(),
+  coverImageUrl: z.string().max(1_000_000).nullable().optional(),
   blocks: z.array(BlockInputSchema).max(500),
   tags: z.array(z.string()).optional(),
 });
@@ -66,6 +67,9 @@ export async function saveDraft(input: z.infer<typeof SaveDraftSchema>) {
       data: {
         title: parsed.title,
         excerpt: parsed.excerpt,
+        ...(typeof parsed.coverImageUrl !== "undefined" && {
+          coverImageUrl: parsed.coverImageUrl,
+        }),
       },
     });
 
@@ -122,6 +126,9 @@ export async function publishPost(input: z.infer<typeof PublishSchema>) {
       data: {
         title: parsed.title,
         excerpt: parsed.excerpt,
+        ...(typeof parsed.coverImageUrl !== "undefined" && {
+          coverImageUrl: parsed.coverImageUrl,
+        }),
         slug: newSlug,
         published: true,
         publishedAt: new Date(),

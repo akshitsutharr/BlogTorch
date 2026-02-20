@@ -29,7 +29,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export async function BlockRenderer({ blocks }: { blocks: Block[] }) {
+export function BlockRenderer({ blocks }: { blocks: Block[] }) {
   return (
     <div className="space-y-5">
       {blocks.map((b) => {

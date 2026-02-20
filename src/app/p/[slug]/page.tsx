@@ -5,10 +5,16 @@ import { Badge } from "@/components/ui/badge";
 import { BlockRenderer } from "@/components/blocks/block-renderer";
 import { getPublishedPostBySlug } from "@/server/posts";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Link from "next/link";
 import { LikeButton, ShareButton } from "@/components/interactions";
+import { Button } from "@/components/ui/button";
 import { ensureDbUser } from "@/server/me";
 import { prisma } from "@/server/db";
 import { ViewTracker } from "./view-tracker";
+import { CommentSection } from "./comment-section";
+import { ArticleWithLoadMore } from "./article-with-load-more";
+import { getRandomBannerUrl } from "@/server/banners";
+import { getAuthUser } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -36,16 +42,72 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   const post = await getPublishedPostBySlug(slug);
   if (!post) notFound();
 
-  // Check if current user liked
-  const me = await ensureDbUser().catch(() => null); // Allow viewing without login
+  const [me, authUser, commentsData] = await Promise.all([
+    ensureDbUser().catch(() => null),
+    getAuthUser().catch(() => null),
+    prisma.comment.findMany({
+      where: { postId: post.id, parentId: null },
+      include: {
+        author: true,
+        replies: {
+          include: { author: true },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
+
+  // Fetch hasLiked for each comment (and reply) if user logged in
+  let commentLikeIds = new Set<string>();
+  if (me) {
+    const allCommentIds = [
+      ...commentsData.map((c) => c.id),
+      ...commentsData.flatMap((c) => (c.replies ?? []).map((r) => r.id)),
+    ];
+    const liked = await prisma.commentLike.findMany({
+      where: { userId: me.id, commentId: { in: allCommentIds } },
+      select: { commentId: true },
+    });
+    commentLikeIds = new Set(liked.map((l) => l.commentId));
+  }
+
+  const comments = commentsData.map((c) => ({
+    ...c,
+    likeCount: c.likeCount ?? 0,
+    hasLiked: commentLikeIds.has(c.id),
+    replies: (c.replies ?? []).map((r) => ({
+      ...r,
+      likeCount: r.likeCount ?? 0,
+      hasLiked: commentLikeIds.has(r.id),
+      replies: [] as typeof r[],
+    })),
+  }));
+
   const hasLiked = me
     ? (await prisma.like.findUnique({
         where: { postId_userId: { postId: post.id, userId: me.id } },
       })) !== null
     : false;
 
+  const bannerUrl = post.coverImageUrl ?? getRandomBannerUrl();
+
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-10">
+      {/* Notion-style banner */}
+      <div className="-mx-4 mb-8 overflow-hidden rounded-2xl md:mx-0 md:rounded-3xl">
+        <div className="relative aspect-[21/9] w-full bg-muted">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={bannerUrl}
+            alt=""
+            className="h-full w-full object-cover"
+            loading="eager"
+            fetchPriority="high"
+          />
+        </div>
+      </div>
+
       <header className="mb-8 space-y-6">
         <div className="flex flex-wrap gap-2">
           {post.tags.map((t) => (
@@ -79,7 +141,12 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+               {me && post.authorId === me.id && (
+                 <Button asChild variant="outline" size="sm">
+                   <Link href={`/editor/${post.id}`}>Edit</Link>
+                 </Button>
+               )}
                <LikeButton 
                  postId={post.id} 
                  initialLikes={post.likeCount} 
@@ -91,8 +158,29 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
       </header>
 
       <article className="space-y-8">
-        <BlockRenderer blocks={post.blocks} />
+        <ArticleWithLoadMore
+          hasMore={
+            post.blocks.length > Math.max(2, Math.ceil(post.blocks.length * 0.4))
+          }
+        >
+          <BlockRenderer
+            blocks={post.blocks.slice(
+              0,
+              Math.max(2, Math.ceil(post.blocks.length * 0.4))
+            )}
+          />
+          <BlockRenderer blocks={post.blocks} />
+        </ArticleWithLoadMore>
       </article>
+
+      <CommentSection
+        postId={post.id}
+        slug={post.slug}
+        comments={comments}
+        isSignedIn={!!authUser}
+        currentUserId={me?.id}
+      />
+
       <ViewTracker postId={post.id} />
     </main>
   );

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
-import { Flame, Plus, Search } from "lucide-react";
+import { Flame, Plus, Search, Bookmark } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -38,6 +38,11 @@ export function Navbar() {
           <SignedIn>
             <Button asChild variant="ghost">
               <Link href="/dashboard">Dashboard</Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link href="/saved">
+                <Bookmark className="size-4" /> Saved
+              </Link>
             </Button>
             <Button asChild>
               <Link href="/editor/new">

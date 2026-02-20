@@ -47,10 +47,11 @@ model User {
   twitterUrl  String?
   location    String?
 
-  posts       Post[]
-  comments    Comment[]
-  likes       Like[]
-  bookmarks   Bookmark[]
+  posts         Post[]
+  comments      Comment[]
+  likes         Like[]
+  bookmarks     Bookmark[]
+  commentLikes CommentLike[]
 
   followers   Follow[] @relation("followers")
   following   Follow[] @relation("following")
@@ -163,18 +164,19 @@ model Bookmark {
 }
 
 model Comment {
-  id        String    @id @default(auto()) @map("_id") @db.ObjectId
-  postId    String    @db.ObjectId
-  authorId  String    @db.ObjectId
-  parentId  String?   @db.ObjectId
+  id         String         @id @default(auto()) @map("_id") @db.ObjectId
+  postId     String         @db.ObjectId
+  authorId   String         @db.ObjectId
+  parentId   String?        @db.ObjectId
 
-  body      String
+  body       String
+  likeCount  Int            @default(0)
 
-  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  post       Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author     User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  commentLikes CommentLike[]
 
   // Prisma 7 requires one side of a self-relation to use NoAction referential actions
-  // to avoid cyclic cascade/update paths.
   parent    Comment?  @relation("comment_thread", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   replies   Comment[] @relation("comment_thread")
 
@@ -183,6 +185,20 @@ model Comment {
 
   @@index([postId, createdAt])
   @@index([authorId])
+}
+
+model CommentLike {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  commentId String   @db.ObjectId
+  userId    String   @db.ObjectId
+
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([commentId, userId])
+  @@index([userId])
 }
 
 model Follow {

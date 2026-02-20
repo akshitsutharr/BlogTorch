@@ -108,6 +108,18 @@ export async function createDraftPostForAuthor(authorId: string) {
   });
 }
 
+export async function getBookmarkedPostIds(
+  userId: string,
+  postIds: string[]
+): Promise<Set<string>> {
+  if (postIds.length === 0) return new Set();
+  const rows = await prisma.bookmark.findMany({
+    where: { userId, postId: { in: postIds } },
+    select: { postId: true },
+  });
+  return new Set(rows.map((r) => r.postId));
+}
+
 export async function reserveSlug(title: string) {
   const base = slugify(title) || "post";
   const exists = await prisma.post.findFirst({ where: { slug: base } });

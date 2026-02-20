@@ -28,6 +28,8 @@ import {
   Trash2,
   Eye,
   X,
+  Image as ImageIcon,
+  Loader2,
 } from "lucide-react";
 
 import { publishPost, saveDraft } from "@/app/editor/[postId]/actions";
@@ -120,6 +122,7 @@ export function EditorClient({
     id: string;
     title: string;
     excerpt: string | null;
+    coverImageUrl: string | null;
     published: boolean;
     tags: string[];
     blocks: Array<{ id: string; type: BlockType; data: unknown }>;
@@ -127,6 +130,7 @@ export function EditorClient({
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const coverInputRef = useRef<HTMLInputElement | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -134,6 +138,8 @@ export function EditorClient({
 
   const [title, setTitle] = useState(post.title);
   const [excerpt, setExcerpt] = useState(post.excerpt ?? "");
+  const [coverImageUrl, setCoverImageUrl] = useState(post.coverImageUrl ?? "");
+  const [coverUploading, setCoverUploading] = useState(false);
   const [tags, setTags] = useState<string[]>(post.tags ?? []);
   const [tagInput, setTagInput] = useState("");
   const [saving, setSaving] = useState(false);
@@ -159,6 +165,7 @@ export function EditorClient({
           postId: post.id,
           title: title.trim() || "Untitled",
           excerpt: excerpt.trim() ? excerpt.trim() : null,
+          coverImageUrl: coverImageUrl.trim() || null,
           blocks: blocks.map((b) => ({ type: b.type, data: b.data })),
           tags,
         });
@@ -170,7 +177,7 @@ export function EditorClient({
         setSaving(false);
       }
     },
-    [post.id, title, excerpt, blocks, tags],
+    [post.id, title, excerpt, coverImageUrl, blocks, tags],
   );
 
   // Mark dirty when content changes after initial mount
@@ -180,7 +187,7 @@ export function EditorClient({
       return;
     }
     setIsDirty(true);
-  }, [title, excerpt, blocks, tags]);
+  }, [title, excerpt, coverImageUrl, blocks, tags]);
 
   // Debounced autosave while editing.
   useEffect(() => {
@@ -237,6 +244,7 @@ export function EditorClient({
         postId: post.id,
         title: title.trim() || "Untitled",
         excerpt: excerpt.trim() ? excerpt.trim() : null,
+        coverImageUrl: coverImageUrl.trim() || null,
         blocks: blocks.map((b) => ({ type: b.type, data: b.data })),
         tags,
       });
@@ -271,6 +279,43 @@ export function EditorClient({
 
   function removeTag(t: string) {
     setTags(tags.filter((x) => x !== t));
+  }
+
+  async function uploadCover(file: File) {
+    setCoverUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Upload failed");
+      setCoverImageUrl(json.url);
+      toast.success("Cover image uploaded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setCoverUploading(false);
+    }
+  }
+
+  async function uploadImageToBlock(blockId: string, file: File) {
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Upload failed");
+      setBlocks((prev) =>
+        prev.map((b) =>
+          b.id === blockId
+            ? { ...b, data: { ...b.data, url: json.url } }
+            : b
+        )
+      );
+      toast.success("Image uploaded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    }
   }
 
   async function handleFileUpload(file: File) {
@@ -420,6 +465,62 @@ export function EditorClient({
               placeholder="Short excerpt (optional)"
               className="min-h-[84px]"
             />
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Cover / Banner</p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) uploadCover(f);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={coverUploading}
+                  onClick={() => coverInputRef.current?.click()}
+                >
+                  {coverUploading ? (
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                  ) : (
+                    <ImageIcon className="mr-2 size-4" />
+                  )}
+                  {coverUploading ? "Uploading…" : "Upload image"}
+                </Button>
+                <span className="text-xs text-muted-foreground">or</span>
+                <Input
+                  value={coverImageUrl}
+                  onChange={(e) => setCoverImageUrl(e.target.value)}
+                  placeholder="Paste image URL (or use /image.png as default)"
+                  className="flex-1"
+                />
+              </div>
+              {coverImageUrl ? (
+                <div className="relative mt-2 aspect-video max-h-40 w-full overflow-hidden rounded-2xl border border-border/60">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={coverImageUrl}
+                    alt="Cover preview"
+                    className="h-full w-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setCoverImageUrl("")}
+                    className="absolute right-2 top-2 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70"
+                    aria-label="Remove cover"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+              ) : null}
+            </div>
             
             <div className="flex flex-col gap-2">
               <div className="flex flex-wrap gap-2">
@@ -515,6 +616,11 @@ export function EditorClient({
                         )
                       }
                       onRemove={() => removeBlock(b.id)}
+                      onUploadImage={
+                        b.type === "IMAGE"
+                          ? (file) => uploadImageToBlock(b.id, file)
+                          : undefined
+                      }
                     />
                   ))}
                 </div>
@@ -614,11 +720,13 @@ function SortableBlockRow({
   index,
   onChange,
   onRemove,
+  onUploadImage,
 }: {
   block: EditorBlock;
   index: number;
   onChange: (b: EditorBlock) => void;
   onRemove: () => void;
+  onUploadImage?: (file: File) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: block.id });
@@ -663,7 +771,7 @@ function SortableBlockRow({
         </Button>
       </div>
 
-      <BlockEditor block={block} onChange={onChange} />
+      <BlockEditor block={block} onChange={onChange} onUploadImage={onUploadImage} />
     </div>
   );
 }
@@ -671,11 +779,14 @@ function SortableBlockRow({
 function BlockEditor({
   block,
   onChange,
+  onUploadImage,
 }: {
   block: EditorBlock;
   onChange: (b: EditorBlock) => void;
+  onUploadImage?: (file: File) => void;
 }) {
   const d = block.data;
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   switch (block.type) {
     case "MARKDOWN":
@@ -732,6 +843,30 @@ function BlockEditor({
     case "IMAGE":
       return (
         <div className="space-y-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f && onUploadImage) onUploadImage(f);
+                e.target.value = "";
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => imageInputRef.current?.click()}
+              disabled={!onUploadImage}
+            >
+              <Upload className="mr-2 size-4" />
+              Upload image
+            </Button>
+            <span className="text-xs text-muted-foreground">or paste URL</span>
+          </div>
           <Input
             value={getString(d.url)}
             onChange={(e) =>

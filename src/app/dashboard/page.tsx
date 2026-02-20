@@ -1,15 +1,7 @@
 import Link from "next/link";
-import {
-  BarChart3,
-  Edit,
-  Eye,
-  FileText,
-  Heart,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { Edit, Eye, FileText, Heart, MessageCircle, Plus, Trash2 } from "lucide-react";
 
-import { deletePost } from "@/app/dashboard/actions";
+import { DeletePostDialog } from "@/app/dashboard/delete-post-dialog";
 import { ViewsChart } from "@/app/dashboard/charts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,6 +33,8 @@ export default async function DashboardPage() {
   let recentPosts: any[] = [];
   let chartData: { title: string; views: number }[] = [];
   let posts: any[] = [];
+  let commentsOnMine: Awaited<ReturnType<typeof prisma.comment.findMany>> = [];
+  let myComments: Awaited<ReturnType<typeof prisma.comment.findMany>> = [];
 
   try {
     // Optimize data fetching: use aggregations and limits to avoid fetching all posts
@@ -51,6 +45,8 @@ export default async function DashboardPage() {
       recentPostsData,
       chartPosts,
       allPosts,
+      latestCommentsOnMyBlogs,
+      myCommentsOnOthers,
     ] = await Promise.all([
     // 1. Total post count
     prisma.post.count({
@@ -105,6 +101,26 @@ export default async function DashboardPage() {
         slug: true,
       },
     }),
+    // 7. Latest comments on user's blogs
+    prisma.comment.findMany({
+      where: { post: { authorId: me.id } },
+      include: {
+        post: { select: { title: true, slug: true } },
+        author: { select: { displayName: true, username: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
+    // 8. User's comments on others' blogs
+    prisma.comment.findMany({
+      where: { authorId: me.id, post: { authorId: { not: me.id } } },
+      include: {
+        post: { select: { title: true, slug: true } },
+        author: { select: { displayName: true, username: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
   ]);
 
   totalPosts = totalPostsCount;
@@ -120,6 +136,8 @@ export default async function DashboardPage() {
   
   // Use 'allPosts' for the posts list
   posts = allPosts;
+  commentsOnMine = latestCommentsOnMyBlogs;
+  myComments = myCommentsOnOthers;
   } catch (error) {
     console.error("Dashboard query failed:", error);
     // Continue with empty data - UI will show "No posts yet"
@@ -176,11 +194,6 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle>Overview</CardTitle>
-          </CardHeader>
-        </Card>
         <div className="col-span-4">
           <ViewsChart data={chartData} />
         </div>
@@ -217,6 +230,87 @@ export default async function DashboardPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageCircle className="size-5" />
+              Latest comments on your blogs
+            </CardTitle>
+            <CardDescription>
+              Recent activity on your published posts.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {commentsOnMine.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No comments yet.</p>
+              ) : (
+                commentsOnMine.map((c) => (
+                  <div
+                    key={c.id}
+                    className="rounded-lg border border-border/50 p-3"
+                  >
+                    <p className="line-clamp-2 text-sm">{c.body}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      by {c.author.displayName ?? c.author.username ?? "Anonymous"} on{" "}
+                      <Link
+                        href={`/p/${c.post.slug}`}
+                        className="text-primary hover:underline"
+                      >
+                        {c.post.title}
+                      </Link>
+                      {" · "}
+                      {new Date(c.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageCircle className="size-5" />
+              Your comments on others
+            </CardTitle>
+            <CardDescription>
+              Comments you left on other authors&apos; posts.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {myComments.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  You haven&apos;t commented on others&apos; posts yet.
+                </p>
+              ) : (
+                myComments.map((c) => (
+                  <div
+                    key={c.id}
+                    className="rounded-lg border border-border/50 p-3"
+                  >
+                    <p className="line-clamp-2 text-sm">{c.body}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      on{" "}
+                      <Link
+                        href={`/p/${c.post.slug}`}
+                        className="text-primary hover:underline"
+                      >
+                        {c.post.title}
+                      </Link>
+                      {" · "}
+                      {new Date(c.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -276,8 +370,7 @@ export default async function DashboardPage() {
                       </Link>
                     </Button>
                   )}
-                  <form action={deletePost}>
-                    <input type="hidden" name="postId" value={post.id} />
+                  <DeletePostDialog postId={post.id} postTitle={post.title}>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -285,7 +378,7 @@ export default async function DashboardPage() {
                     >
                       <Trash2 className="size-4" />
                     </Button>
-                  </form>
+                  </DeletePostDialog>
                 </div>
               </div>
             ))}
