@@ -32,7 +32,7 @@ export default function ExploreLoading() {
                 <Skeleton className="h-3 w-16" />
               </div>
             </div>
-            <Skeleton className="h-40 sm:h-auto sm:w-48" />
+            <Skeleton className="h-40 border-t border-border/50 sm:h-auto sm:w-56 sm:border-l sm:border-t-0" />
           </div>
         ))}
       </div>

@@ -1,8 +1,10 @@
 "use client";
 
+import { createAvatar } from "@dicebear/core";
+import { adventurerNeutral } from "@dicebear/collection";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import {
   Eye,
   MessageCircle,
@@ -22,8 +24,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-
-const DEFAULT_THUMBNAIL = "/image.png";
 
 type BlogCardProps = {
   postId: string;
@@ -68,9 +68,16 @@ export function BlogCard({
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
   const [pending, startTransition] = useTransition();
 
-  const thumbnail = coverImageUrl ?? DEFAULT_THUMBNAIL;
   const authorName = author.displayName ?? author.username ?? "Author";
   const isAuthor = currentUserId === authorId;
+  const cardAvatar = useMemo(() => {
+    const seed = `${postId}-${slug}-${title}-${coverImageUrl ?? "no-cover"}`;
+    return createAvatar(adventurerNeutral, {
+      seed,
+      size: 512,
+    }).toDataUri();
+  }, [coverImageUrl, postId, slug, title]);
+
   const formatCount = (n: number) =>
     n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n);
 
@@ -199,14 +206,20 @@ export function BlogCard({
         </div>
       </div>
 
-      <Link href={`/p/${slug}`} className="relative h-40 shrink-0 sm:h-auto sm:w-48">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={thumbnail}
-          alt=""
-          className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
-          loading="lazy"
-        />
+      <Link
+        href={`/p/${slug}`}
+        className="relative flex h-40 shrink-0 items-center justify-center overflow-hidden border-t border-border/50 bg-linear-to-br from-muted/50 to-muted/10 perspective-[1100px] sm:h-auto sm:w-56 sm:border-l sm:border-t-0"
+      >
+        <div className="relative h-full w-full transform-3d transition-transform duration-300 ease-out will-change-transform group-hover:transform-[rotateX(7deg)_rotateY(-10deg)_scale(1.02)]">
+          <div className="pointer-events-none absolute inset-0 z-10 bg-linear-to-br from-white/25 via-transparent to-black/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={cardAvatar}
+            alt={`${title} avatar`}
+            className="h-full w-full object-contain p-3 drop-shadow-[0_8px_18px_rgba(0,0,0,0.22)] transition-[filter] duration-300 group-hover:drop-shadow-[0_18px_32px_rgba(0,0,0,0.35)] sm:p-4"
+            loading="lazy"
+          />
+        </div>
       </Link>
     </div>
   );

@@ -27,7 +27,7 @@ export default function SavedLoading() {
               <Skeleton className="h-6 w-full" />
               <Skeleton className="h-4 w-3/4" />
             </div>
-            <Skeleton className="h-40 sm:w-48" />
+            <Skeleton className="h-40 border-t border-border/50 sm:h-auto sm:w-56 sm:border-l sm:border-t-0" />
           </div>
         ))}
       </div>
