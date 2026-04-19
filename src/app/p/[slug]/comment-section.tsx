@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MessageCircle, Send, Loader2, Heart } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@clerk/nextjs";
 
 import { addComment } from "./comment-actions";
 import { toggleCommentLike } from "./comment-like-actions";
@@ -30,16 +31,13 @@ export function CommentSection({
   postId,
   slug,
   comments,
-  isSignedIn,
-  currentUserId,
 }: {
   postId: string;
   slug: string;
   comments: Comment[];
-  isSignedIn: boolean;
-  currentUserId?: string;
 }) {
   const router = useRouter();
+  const { isSignedIn } = useAuth();
   const [body, setBody] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -81,7 +79,7 @@ export function CommentSection({
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="Share your thoughts..."
-            className="min-h-[100px] resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="min-h-25 resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
             disabled={pending}
           />
           <div className="mt-3 flex justify-end">
@@ -117,7 +115,7 @@ export function CommentSection({
           </p>
         ) : (
           comments.map((c) => (
-            <CommentItem key={c.id} comment={c} slug={slug} currentUserId={currentUserId} />
+            <CommentItem key={c.id} comment={c} slug={slug} isSignedIn={!!isSignedIn} />
           ))
         )}
       </div>
@@ -128,11 +126,11 @@ export function CommentSection({
 function CommentItem({
   comment,
   slug,
-  currentUserId,
+  isSignedIn,
 }: {
   comment: Comment;
   slug: string;
-  currentUserId?: string;
+  isSignedIn: boolean;
 }) {
   const [likes, setLikes] = useState(comment.likeCount ?? 0);
   const [hasLiked, setHasLiked] = useState(comment.hasLiked ?? false);
@@ -141,7 +139,7 @@ function CommentItem({
     comment.author.displayName ?? comment.author.username ?? "Anonymous";
 
   const handleLike = () => {
-    if (!currentUserId) return;
+    if (!isSignedIn) return;
     setHasLiked((b) => !b);
     setLikes((n) => (hasLiked ? n - 1 : n + 1));
     startTransition(async () => {
@@ -174,7 +172,7 @@ function CommentItem({
           {comment.body}
         </p>
         <div className="mt-2 flex items-center gap-3">
-          {currentUserId ? (
+          {isSignedIn ? (
             <button
               type="button"
               onClick={handleLike}
@@ -196,7 +194,7 @@ function CommentItem({
         {comment.replies && comment.replies.length > 0 && (
           <div className="mt-4 space-y-4 pl-4 border-l border-border/40">
             {comment.replies.map((r) => (
-              <CommentItem key={r.id} comment={r} slug={slug} currentUserId={currentUserId} />
+              <CommentItem key={r.id} comment={r} slug={slug} isSignedIn={isSignedIn} />
             ))}
           </div>
         )}

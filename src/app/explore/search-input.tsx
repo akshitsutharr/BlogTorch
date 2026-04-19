@@ -30,7 +30,7 @@ export function SearchInput() {
   }
 
   return (
-    <div className="flex w-full max-w-md items-center gap-2">
+    <div className="flex w-full max-w-md items-center gap-2 rounded-2xl border border-border/65 bg-background/70 p-1.5 shadow-[inset_0_1px_0_hsl(0_0%_100%/0.25)] backdrop-blur">
       <Input
         placeholder="Search posts (title, author, tags)..."
         value={value}
@@ -44,6 +44,7 @@ export function SearchInput() {
             handleSearch(value);
           }
         }}
+        className="h-10 border-0 bg-transparent shadow-none"
       />
       <Button
         variant="outline"
@@ -51,6 +52,7 @@ export function SearchInput() {
         aria-label="Search"
         onClick={() => handleSearch(value)}
         disabled={isPending}
+        className="h-10 w-10"
       >
         <Search className="size-4" />
       </Button>

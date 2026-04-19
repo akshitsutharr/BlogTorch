@@ -41,7 +41,6 @@ export const config = {
   matcher: [
     // Run middleware on all routes except static files and Next internals.
     "/((?!_next|.*\\..*).*)",
-    "/(api|trpc)(.*)",
   ],
 };
 

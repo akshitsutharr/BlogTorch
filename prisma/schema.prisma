@@ -161,6 +161,7 @@ model Bookmark {
 
   @@unique([postId, userId])
   @@index([userId])
+  @@index([userId, createdAt])
 }
 
 model Comment {
@@ -184,6 +185,7 @@ model Comment {
   updatedAt DateTime  @updatedAt
 
   @@index([postId, createdAt])
+  @@index([postId, parentId, createdAt])
   @@index([authorId])
 }
 

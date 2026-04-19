@@ -2,6 +2,7 @@ import "server-only";
 
 import { Prisma } from "@prisma/client";
 import { headers } from "next/headers";
+import { cache } from "react";
 
 import { prisma } from "@/server/db";
 import type { AuthUser } from "@/server/auth";
@@ -40,13 +41,23 @@ async function upsertUserSafely(opts: {
   });
 
   if (existingUser) {
-    // User exists - only update non-username fields to avoid conflicts
+    const nextRole = opts.isAdmin ? "ADMIN" : "USER";
+    const nextDisplayName = opts.displayName;
+    const nextImageUrl = opts.imageUrl ?? null;
+
+    const shouldUpdate =
+      existingUser.displayName !== nextDisplayName ||
+      existingUser.imageUrl !== nextImageUrl ||
+      existingUser.role !== nextRole;
+
+    if (!shouldUpdate) return existingUser;
+
     return await prisma.user.update({
       where: { clerkId: opts.clerkId },
       data: {
-        displayName: opts.displayName,
-        imageUrl: opts.imageUrl ?? null,
-        role: opts.isAdmin ? "ADMIN" : "USER",
+        displayName: nextDisplayName,
+        imageUrl: nextImageUrl,
+        role: nextRole,
       },
     });
   }
@@ -89,7 +100,7 @@ async function upsertUserSafely(opts: {
   }
 }
 
-export async function ensureDbUser(authUser?: AuthUser) {
+export const ensureDbUser = cache(async (authUser?: AuthUser) => {
   const hdrs = await headers();
 
   // TestSprite / local automation path: allow basic auth to act as a synthetic user
@@ -121,4 +132,4 @@ export async function ensureDbUser(authUser?: AuthUser) {
     imageUrl: clerk.imageUrl,
     isAdmin: clerk.role === "admin",
   });
-}
+});

@@ -1,10 +1,16 @@
 "use client";
 
-import { createAvatar } from "@dicebear/core";
-import { adventurerNeutral } from "@dicebear/collection";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { createAvatar } from "@dicebear/core";
+import {
+  adventurerNeutral,
+  botttsNeutral,
+  funEmoji,
+  notionistsNeutral,
+} from "@dicebear/collection";
 import {
   Eye,
   MessageCircle,
@@ -67,16 +73,47 @@ export function BlogCard({
   const router = useRouter();
   const [bookmarked, setBookmarked] = useState(initialBookmarked);
   const [pending, startTransition] = useTransition();
+  const [isDesktop, setIsDesktop] = useState(false);
 
   const authorName = author.displayName ?? author.username ?? "Author";
   const isAuthor = currentUserId === authorId;
-  const cardAvatar = useMemo(() => {
-    const seed = `${postId}-${slug}-${title}-${coverImageUrl ?? "no-cover"}`;
-    return createAvatar(adventurerNeutral, {
+  const previewImage = coverImageUrl ?? "/image.png";
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 640px)");
+    const onChange = () => setIsDesktop(media.matches);
+    onChange();
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
+
+  const desktopAvatar = useMemo(() => {
+    if (!isDesktop) return null;
+
+    const seed = `${postId}-${slug}-${title}-${authorName}`;
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+      hash = (hash << 5) - hash + seed.charCodeAt(i);
+    }
+
+    const styleIndex = Math.abs(hash) % 4;
+    const options = {
       seed,
-      size: 512,
-    }).toDataUri();
-  }, [coverImageUrl, postId, slug, title]);
+      size: 256,
+      radius: 18,
+    };
+
+    if (styleIndex === 0) {
+      return createAvatar(adventurerNeutral, options).toDataUri();
+    }
+    if (styleIndex === 1) {
+      return createAvatar(botttsNeutral, options).toDataUri();
+    }
+    if (styleIndex === 2) {
+      return createAvatar(funEmoji, options).toDataUri();
+    }
+    return createAvatar(notionistsNeutral, options).toDataUri();
+  }, [authorName, isDesktop, postId, slug, title]);
 
   const formatCount = (n: number) =>
     n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n);
@@ -212,13 +249,34 @@ export function BlogCard({
       >
         <div className="relative h-full w-full transform-3d transition-transform duration-300 ease-out will-change-transform group-hover:transform-[rotateX(7deg)_rotateY(-10deg)_scale(1.02)]">
           <div className="pointer-events-none absolute inset-0 z-10 bg-linear-to-br from-white/25 via-transparent to-black/10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={cardAvatar}
-            alt={`${title} avatar`}
-            className="h-full w-full object-contain p-3 drop-shadow-[0_8px_18px_rgba(0,0,0,0.22)] transition-[filter] duration-300 group-hover:drop-shadow-[0_18px_32px_rgba(0,0,0,0.35)] sm:p-4"
+          <Image
+            src={previewImage}
+            alt={title}
+            fill
+            className="object-cover p-0 transition-[filter] duration-300 group-hover:drop-shadow-[0_18px_32px_rgba(0,0,0,0.35)] sm:hidden"
+            sizes="(max-width: 640px) 100vw, 224px"
             loading="lazy"
           />
+          {desktopAvatar ? (
+            <Image
+              src={desktopAvatar}
+              alt={`${title} avatar`}
+              fill
+              unoptimized
+              className="hidden object-contain p-3 transition-[filter] duration-300 group-hover:drop-shadow-[0_18px_32px_rgba(0,0,0,0.35)] sm:block"
+              sizes="224px"
+              loading="lazy"
+            />
+          ) : (
+            <Image
+              src={previewImage}
+              alt={title}
+              fill
+              className="hidden object-cover p-0 transition-[filter] duration-300 group-hover:drop-shadow-[0_18px_32px_rgba(0,0,0,0.35)] sm:block"
+              sizes="224px"
+              loading="lazy"
+            />
+          )}
         </div>
       </Link>
     </div>

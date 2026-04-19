@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { nanoid } from "nanoid";
 import { toast } from "sonner";
 import {
@@ -504,11 +505,12 @@ export function EditorClient({
               </div>
               {coverImageUrl ? (
                 <div className="relative mt-2 aspect-video max-h-40 w-full overflow-hidden rounded-2xl border border-border/60">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={coverImageUrl}
                     alt="Cover preview"
-                    className="h-full w-full object-cover"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 640px"
                   />
                   <button
                     type="button"

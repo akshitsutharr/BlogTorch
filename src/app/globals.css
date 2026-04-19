@@ -116,6 +116,169 @@
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
+  text-rendering: optimizeLegibility;
+  font-variant-numeric: tabular-nums;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.2);
+  color: hsl(var(--foreground));
+}
+
+.ambient-grid {
+  background-image:
+    linear-gradient(to right, hsl(var(--border) / 0.2) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--border) / 0.2) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: radial-gradient(circle at center, black 35%, transparent 90%);
+}
+
+.site-noise::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.02;
+  background-image: radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0);
+  background-size: 4px 4px;
+}
+
+.page-shell {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 1400px;
+  margin-inline: auto;
+  padding-inline: 1rem;
+  padding-top: 2rem;
+  padding-bottom: 3.5rem;
+}
+
+.section-shell {
+  border: 1px solid hsl(var(--border) / 0.55);
+  border-radius: 2rem;
+  padding: 0.4rem;
+  background: hsl(var(--card) / 0.45);
+  box-shadow:
+    0 20px 60px -28px hsl(240 20% 10% / 0.2),
+    inset 0 1px 0 hsl(0 0% 100% / 0.18);
+}
+
+.section-core {
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: calc(2rem - 0.4rem);
+  background: hsl(var(--card) / 0.8);
+}
+
+.headline-display {
+  text-wrap: balance;
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+  font-size: clamp(2.1rem, 5.5vw, 4.4rem);
+}
+
+.eyebrow-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border) / 0.65);
+  padding: 0.35rem 0.7rem;
+  font-size: 0.66rem;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
+  background: hsl(var(--background) / 0.75);
+  color: hsl(var(--muted-foreground));
+}
+
+.soft-divider {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, hsl(var(--border) / 0.85), transparent);
+}
+
+@keyframes logoFloat {
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-2px) rotate(-2deg);
+  }
+}
+
+.logo-float {
+  animation: logoFloat 3s ease-in-out infinite;
+}
+
+@keyframes orbPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.25);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 0 8px hsl(var(--primary) / 0);
+  }
+}
+
+.loading-orb {
+  animation: orbPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes barSlide {
+  0% {
+    transform: translateX(-70%);
+  }
+  100% {
+    transform: translateX(110%);
+  }
+}
+
+.loading-bar {
+  width: 40%;
+  animation: barSlide 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.5;
+  }
+}
+
+.loading-shimmer {
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+@media (max-width: 767px) {
+  .page-shell {
+    padding-inline: 0.9rem;
+    padding-top: 1.4rem;
+    padding-bottom: 2.5rem;
+  }
+
+  .section-shell {
+    border-radius: 1.4rem;
+    padding: 0.35rem;
+  }
+
+  .section-core {
+    border-radius: calc(1.4rem - 0.35rem);
+  }
 }
 
 /* Custom utility to force prose colors to match theme */

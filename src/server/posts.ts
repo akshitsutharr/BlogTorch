@@ -1,6 +1,7 @@
 import "server-only";
 
 import { nanoid } from "nanoid";
+import { unstable_cache } from "next/cache";
 
 import { prisma } from "@/server/db";
 
@@ -24,66 +25,80 @@ function slugify(input: string) {
 }
 
 export async function listPublishedPosts(limit = 12, query?: string) {
-  const where: import("@prisma/client").Prisma.PostWhereInput = {
-    published: true,
-  };
+  const trimmedQuery = query?.trim() ?? "";
 
-  if (query) {
-    const search = query.trim();
-    if (search) {
-      where.OR = [
-        { title: { contains: search, mode: "insensitive" } },
-        { excerpt: { contains: search, mode: "insensitive" } },
-        {
-          author: {
-            OR: [
-              { username: { contains: search, mode: "insensitive" } },
-              { displayName: { contains: search, mode: "insensitive" } },
-            ],
+  return await unstable_cache(
+    async () => {
+      const where: import("@prisma/client").Prisma.PostWhereInput = {
+        published: true,
+      };
+
+      if (trimmedQuery) {
+        where.OR = [
+          { title: { contains: trimmedQuery, mode: "insensitive" } },
+          { excerpt: { contains: trimmedQuery, mode: "insensitive" } },
+          {
+            author: {
+              OR: [
+                { username: { contains: trimmedQuery, mode: "insensitive" } },
+                { displayName: { contains: trimmedQuery, mode: "insensitive" } },
+              ],
+            },
           },
-        },
-        // Also search in tags
-        {
-           tags: {
-             some: {
-               tag: {
-                 name: { contains: search, mode: "insensitive" }
-               }
-             }
-           }
-        }
-      ];
-    }
-  }
+          {
+            tags: {
+              some: {
+                tag: {
+                  name: { contains: trimmedQuery, mode: "insensitive" },
+                },
+              },
+            },
+          },
+        ];
+      }
 
-  return await withDbFallback(
-    () =>
-      prisma.post.findMany({
-        where,
-        orderBy: { publishedAt: "desc" },
-        take: limit,
-        include: {
-          author: true,
-          tags: { include: { tag: true } },
-        },
-      }),
-    [],
-  );
+      return await withDbFallback(
+        () =>
+          prisma.post.findMany({
+            where,
+            orderBy: { publishedAt: "desc" },
+            take: limit,
+            include: {
+              author: true,
+              tags: { include: { tag: true } },
+            },
+          }),
+        [],
+      );
+    },
+    ["posts:list", String(limit), trimmedQuery],
+    {
+      revalidate: trimmedQuery ? 30 : 60,
+      tags: trimmedQuery
+        ? ["posts:list", `posts:search:${trimmedQuery.toLowerCase()}`]
+        : ["posts:list", "posts:search:all"],
+    },
+  )();
 }
 
 export async function getPublishedPostBySlug(slug: string) {
-  return await withDbFallback(
-    () =>
-      prisma.post.findFirst({
-        where: { slug, published: true },
-        include: {
-          author: true,
-          tags: { include: { tag: true } },
-          blocks: { orderBy: { order: "asc" } },
-        },
-      }),
-    null,
-  );
+  return await unstable_cache(
+    async () =>
+      await withDbFallback(
+        () =>
+          prisma.post.findFirst({
+            where: { slug, published: true },
+            include: {
+              author: true,
+              tags: { include: { tag: true } },
+              blocks: { orderBy: { order: "asc" } },
+            },
+          }),
+        null,
+      ),
+    ["posts:slug", slug],
+    { revalidate: 60, tags: ["posts:slug", `post:${slug}`] },
+  )();
 }
 
 export async function createDraftPostForAuthor(authorId: string) {

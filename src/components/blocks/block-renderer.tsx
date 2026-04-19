@@ -1,4 +1,3 @@
-import { MarkdownBlock } from "@/components/blocks/markdown-block";
 import { CodeBlock } from "@/components/blocks/code-block";
 import {
   OutputBlock,
@@ -7,6 +6,9 @@ import {
   CalloutBlock,
 } from "@/components/blocks/client-blocks";
 import type { Prisma } from "@prisma/client";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeSanitize from "rehype-sanitize";
 
 type Block = {
   id: string;
@@ -36,14 +38,16 @@ export function BlockRenderer({ blocks }: { blocks: Block[] }) {
         switch (b.type) {
           case "MARKDOWN":
             return (
-              <MarkdownBlock
-                key={b.id}
-                markdown={
-                  isRecord(b.data) && typeof b.data.markdown === "string"
+              <div key={b.id} className="prose prose-theme max-w-none">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeSanitize]}
+                >
+                  {isRecord(b.data) && typeof b.data.markdown === "string"
                     ? b.data.markdown
-                    : ""
-                }
-              />
+                    : ""}
+                </ReactMarkdown>
+              </div>
             );
           case "CODE":
             return (

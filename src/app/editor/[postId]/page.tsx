@@ -42,10 +42,7 @@ export default async function Page({
   if (!post || post.authorId !== me.id) notFound();
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-10">
-      <p className="mb-3 text-xs text-muted-foreground">
-        updatedAt: {post.updatedAt.toISOString()}
-      </p>
+    <main className="page-shell max-w-7xl">
       <EditorClient
         post={{
           id: post.id,

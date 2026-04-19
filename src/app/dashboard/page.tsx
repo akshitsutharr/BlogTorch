@@ -144,15 +144,25 @@ export default async function DashboardPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-6xl space-y-8 px-4 py-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <Button asChild>
-          <Link href="/editor/new">
-            <Plus className="mr-2 size-4" /> New Post
-          </Link>
-        </Button>
-      </div>
+    <main className="page-shell space-y-8">
+      <section className="section-shell">
+        <div className="section-core px-6 py-6 sm:px-8 sm:py-7">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="eyebrow-chip mb-3">Creator Dashboard</p>
+              <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Control center</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Track engagement, manage posts, and monitor audience activity.
+              </p>
+            </div>
+            <Button asChild>
+              <Link href="/editor/new">
+                <Plus className="mr-2 size-4" /> New Post
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </section>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -316,7 +326,7 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle>All Posts</CardTitle>
           <CardDescription>Manage your content.</CardDescription>

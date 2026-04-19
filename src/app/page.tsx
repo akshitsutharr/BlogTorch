@@ -5,83 +5,90 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BlogCard } from "@/components/blog-card";
-import { listPublishedPosts, getBookmarkedPostIds } from "@/server/posts";
+import { listPublishedPosts } from "@/server/posts";
 import { getBannerForPost } from "@/server/banners";
-import { ensureDbUser } from "@/server/me";
-import { getAuthUser } from "@/server/auth";
 
 export const revalidate = 60;
 
 export default async function Home() {
-  const [posts, authUser] = await Promise.all([
-    listPublishedPosts(9),
-    getAuthUser().catch(() => null),
-  ]);
-
-  let me: { id: string } | null = null;
-  let bookmarkedIds = new Set<string>();
-  if (authUser && posts.length > 0) {
-    try {
-      me = await ensureDbUser(authUser);
-      bookmarkedIds = await getBookmarkedPostIds(me.id, posts.map((p) => p.id));
-    } catch {
-      /* ignore */
-    }
-  }
+  const posts = await listPublishedPosts(9);
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-10">
-      <section
-        id="hero"
-        className="relative overflow-hidden rounded-[2.25rem] border border-border/60 bg-gradient-to-br from-orange-500/10 via-background to-pink-500/10 p-10 shadow-sm"
-      >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(249,115,22,0.12),transparent_45%),radial-gradient(circle_at_80%_0%,rgba(236,72,153,0.10),transparent_40%)]" />
-        <div className="relative flex flex-col gap-6">
-          <div className="flex items-center gap-2">
-            <Badge>
-              <Sparkles className="mr-1 inline size-3.5" />
-              Premium developer blogging
-            </Badge>
-          </div>
-          <h1 className="max-w-3xl text-balance text-4xl font-semibold tracking-tight md:text-5xl">
-            Where <span className="text-primary">Code</span> Meets{" "}
-            <span className="text-primary">Storytelling</span>
-          </h1>
-          <p className="max-w-2xl text-pretty text-lg leading-8 text-muted-foreground">
-            Blog Torch combines a developer portfolio, technical blog, and
-            notebook-style presentation into one polished platform—perfect for
-            ML models, experiments, and project narratives.
-          </p>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg">
-              <Link href="/editor/new">
-                Start writing <ArrowRight />
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href="/explore">Explore posts</Link>
-            </Button>
+    <main className="page-shell">
+      <section id="hero" className="section-shell">
+        <div className="section-core relative overflow-hidden px-6 py-10 sm:px-10 sm:py-12">
+          <div className="pointer-events-none absolute -left-24 top-0 h-64 w-64 rounded-full bg-orange-500/12 blur-[90px]" />
+          <div className="pointer-events-none absolute -right-20 top-16 h-64 w-64 rounded-full bg-pink-500/12 blur-[100px]" />
+
+          <div className="relative grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="space-y-6">
+              <div className="eyebrow-chip">
+                <Sparkles className="size-3" />
+                developer publishing platform
+              </div>
+
+              <h1 className="headline-display max-w-4xl font-semibold">
+                Shape technical stories with a design-forward writing experience.
+              </h1>
+
+              <p className="max-w-[65ch] text-base leading-relaxed text-muted-foreground sm:text-lg">
+                Blog Torch blends notebooks, long-form writing, and rich visual blocks
+                into one modern editor and reader flow for developers, researchers,
+                and teams.
+              </p>
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button asChild size="lg">
+                  <Link href="/editor/new">
+                    Start writing
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline">
+                  <Link href="/explore">Explore posts</Link>
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              <Card className="border-primary/20 bg-linear-to-br from-primary/8 via-background to-background">
+                <CardContent className="p-5">
+                  <p className="text-xs tracking-[0.15em] text-muted-foreground">BUILT FOR</p>
+                  <p className="mt-3 text-lg font-semibold tracking-tight">ML experiments</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Publish outputs, plots, and code with context.</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-5">
+                  <p className="text-xs tracking-[0.15em] text-muted-foreground">READER EXPERIENCE</p>
+                  <p className="mt-3 text-lg font-semibold tracking-tight">Fast and focused</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Optimized loading, clean typography, and adaptive media.</p>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="mt-12">
-        <div className="mb-6 flex items-end justify-between gap-4">
+      <section className="mt-10">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-xl font-semibold tracking-tight">For you</h2>
+            <Badge variant="outline" className="mb-3">Latest collection</Badge>
+            <h2 className="text-2xl font-semibold tracking-tight">Curated for you</h2>
             <p className="text-sm text-muted-foreground">
-              Curated developer stories with code, visuals, and outputs.
+              Fresh developer stories with code, visuals, and notebook-style outputs.
             </p>
           </div>
           <Button asChild variant="ghost">
             <Link href="/explore">
-              View all <ArrowRight />
+              View all
+              <ArrowRight className="size-4" />
             </Link>
           </Button>
         </div>
 
         {posts.length === 0 ? (
-          <Card>
+          <Card className="rounded-[1.9rem]">
             <CardHeader>
               <CardTitle>No posts yet</CardTitle>
             </CardHeader>
@@ -107,8 +114,6 @@ export default async function Home() {
                 viewCount={p.viewCount}
                 commentCount={p.commentCount}
                 likeCount={p.likeCount}
-                currentUserId={me?.id}
-                initialBookmarked={bookmarkedIds.has(p.id)}
               />
             ))}
           </div>

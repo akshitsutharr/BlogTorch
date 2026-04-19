@@ -45,9 +45,21 @@ export default function RootLayout({
             disableTransitionOnChange
             themes={['light', 'dark', 'light-grey']}
           >
-            <div className="min-h-dvh bg-background text-foreground">
+            <a
+              href="#main-content"
+              className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-60 focus:rounded-full focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+            >
+              Skip to content
+            </a>
+            <div className="site-noise relative min-h-dvh overflow-x-clip bg-background text-foreground">
+              <div className="pointer-events-none fixed inset-0 z-0">
+                <div className="ambient-grid absolute inset-0" />
+                <div className="absolute -left-32 top-24 h-72 w-72 rounded-full bg-orange-500/12 blur-[110px]" />
+                <div className="absolute -right-20 top-44 h-80 w-80 rounded-full bg-pink-500/10 blur-[120px]" />
+                <div className="absolute bottom-0 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-primary/10 blur-[110px]" />
+              </div>
               <Navbar />
-        {children}
+              <div id="main-content" className="relative z-10">{children}</div>
             </div>
             <Toaster
               richColors

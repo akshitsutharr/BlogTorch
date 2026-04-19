@@ -3,25 +3,35 @@
 import { MarkdownBlock } from "@/components/blocks/markdown-block";
 import { cn } from "@/lib/utils";
 import type { Prisma } from "@prisma/client";
+import Image from "next/image";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function sanitizeImageSrc(value: string): string {
+  // Remove ASCII control chars and trim tail whitespace to satisfy next/image src validation.
+  return value.replace(/[\u0000-\u001F\u007F]/g, "").trimEnd();
 }
 
 export function OutputBlock({ data }: { data: Prisma.JsonValue }) {
   const d = isRecord(data) ? data : {};
   const mime = typeof d.mime === "string" ? d.mime : "text/plain";
   const text = typeof d.text === "string" ? d.text : null;
-  const base64 = typeof d.base64 === "string" ? d.base64 : null;
+  const base64 =
+    typeof d.base64 === "string" ? sanitizeImageSrc(d.base64) : null;
 
   if (mime.startsWith("image/") && base64) {
+    const outputSrc = sanitizeImageSrc(`data:${mime};base64,${base64}`);
     return (
       <div className="overflow-hidden rounded-3xl border border-border/60 bg-card/60 p-3 shadow-sm">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={`data:${mime};base64,${base64}`}
+        <Image
+          src={outputSrc}
           alt={typeof d.alt === "string" ? d.alt : "Output image"}
           className="h-auto w-full rounded-2xl"
+          width={1200}
+          height={800}
+          unoptimized
         />
       </div>
     );
@@ -36,23 +46,27 @@ export function OutputBlock({ data }: { data: Prisma.JsonValue }) {
 
 export function ImageBlock({ data }: { data: Prisma.JsonValue }) {
   const d = isRecord(data) ? data : {};
-  let src: string | null = typeof d.url === "string" ? d.url.trim() : null;
+  let src: string | null =
+    typeof d.url === "string" ? sanitizeImageSrc(d.url).trim() : null;
   if (!src && typeof d.base64 === "string" && typeof d.mime === "string") {
-    src = `data:${d.mime};base64,${d.base64}`;
+    src = sanitizeImageSrc(`data:${d.mime};base64,${sanitizeImageSrc(d.base64)}`);
   }
   if (!src) return null;
   const alt = typeof d.alt === "string" ? d.alt : "Image";
   return (
     <figure className="overflow-hidden rounded-3xl border border-border/60 bg-card/60 p-3 shadow-sm">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <Image
         src={src}
         alt={alt}
         className="h-auto w-full rounded-2xl"
+        width={1200}
+        height={800}
+        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
         loading="lazy"
         onError={(e) => {
           (e.target as HTMLImageElement).style.display = "none";
         }}
+        unoptimized={src.startsWith("data:")}
       />
       {typeof d.caption === "string" && d.caption.trim() ? (
         <figcaption className="px-2 pt-3 text-center text-xs text-muted-foreground">

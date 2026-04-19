@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Heart, Share2, Check } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@clerk/nextjs";
 
 import { toggleLike } from "@/app/p/[slug]/actions";
 import { Button } from "@/components/ui/button";
@@ -17,11 +18,17 @@ export function LikeButton({
   initialLikes: number;
   initialHasLiked: boolean;
 }) {
+  const { isSignedIn } = useAuth();
   const [likes, setLikes] = useState(initialLikes);
   const [hasLiked, setHasLiked] = useState(initialHasLiked);
   const [isPending, startTransition] = useTransition();
 
   const handleToggle = () => {
+    if (!isSignedIn) {
+      toast.error("Sign in to like posts");
+      return;
+    }
+
     // Optimistic update
     const nextHasLiked = !hasLiked;
     setHasLiked(nextHasLiked);

@@ -9,7 +9,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-3xl border border-border/60 bg-card/75 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/60",
+        "relative overflow-hidden rounded-[1.7rem] border border-border/60 bg-card/86 shadow-[0_20px_55px_-35px_hsl(240_20%_10%/0.45)] transition-all duration-300 before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-linear-to-r before:from-transparent before:via-white/40 before:to-transparent",
         className,
       )}
       {...props}
@@ -21,7 +21,7 @@ export function CardHeader({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("p-6 pb-2", className)} {...props} />;
+  return <div className={cn("p-6 pb-3", className)} {...props} />;
 }
 
 export function CardTitle({
@@ -30,7 +30,7 @@ export function CardTitle({
 }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h3
-      className={cn("text-lg font-semibold leading-tight tracking-tight", className)}
+      className={cn("text-lg font-semibold leading-tight tracking-tight md:text-[1.08rem]", className)}
       {...props}
     />
   );
@@ -41,7 +41,7 @@ export function CardDescription({
   ...props
 }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
-    <p className={cn("text-sm text-muted-foreground", className)} {...props} />
+    <p className={cn("text-sm text-muted-foreground/95", className)} {...props} />
   );
 }
 
